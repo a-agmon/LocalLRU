@@ -14,7 +14,7 @@
 use bytes::Bytes;
 use std::cell::RefCell;
 
-pub mod cache;
+mod cache;
 use cache::LRUCache;
 
 thread_local! {
@@ -34,6 +34,8 @@ impl LocalCache {
     /// # Example
     ///
     /// ```
+    /// use local_lru::LocalCache;  
+    /// use bytes::Bytes;
     /// let cache = LocalCache::new(2, 60);
     /// cache.add_item("key1".to_string(), Bytes::from("value1"));
     /// assert_eq!(cache.get_item(&"key1".to_string()), Some(Bytes::from("value1")));
