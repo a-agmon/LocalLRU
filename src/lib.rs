@@ -158,4 +158,25 @@ mod tests {
         // The item should now be expired
         assert_eq!(cache.get_item(&"key1".to_string()), None);
     }
+
+    #[test]
+    fn test_no_ttl_expiration() {
+        let cache = LocalCache::new(3, 0); // TTL of 0 seconds means no expiration
+
+        cache.add_item("key1".to_string(), Bytes::from("value1"));
+
+        assert_eq!(
+            cache.get_item(&"key1".to_string()),
+            Some(Bytes::from("value1"))
+        );
+
+        // Wait for 3 seconds
+        sleep(Duration::from_secs(3));
+
+        // The item should still be present as there's no TTL
+        assert_eq!(
+            cache.get_item(&"key1".to_string()),
+            Some(Bytes::from("value1"))
+        );
+    }
 }

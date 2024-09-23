@@ -4,17 +4,23 @@ use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::time::SystemTime;
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum CacheItemTTL {
+    ExpiresAt(u64),
+    Persist,
+}
+
 pub(crate) struct CacheItem {
     key: String,
     value: Bytes,
-    expires_at: u64,
+    expires_at: CacheItemTTL,
     prev: Option<Weak<RefCell<CacheItem>>>,
     next: Option<Rc<RefCell<CacheItem>>>,
 }
 
 pub(crate) struct LRUCache {
     capacity: usize,
-    ttl_seconds: u64,
+    ttl: u64,
     map: HashMap<String, Rc<RefCell<CacheItem>>>,
     head: Option<Rc<RefCell<CacheItem>>>,
     tail: Option<Rc<RefCell<CacheItem>>>,
@@ -24,7 +30,7 @@ impl LRUCache {
     pub(crate) fn new(capacity: usize, ttl_seconds: u64) -> Self {
         LRUCache {
             capacity,
-            ttl_seconds,
+            ttl: ttl_seconds,
             map: HashMap::new(),
             head: None,
             tail: None,
@@ -58,18 +64,26 @@ impl LRUCache {
 
     /// Retrieves an item from the cache by key. If the item exists, it moves it to the front.
     pub(crate) fn get_item(&mut self, key: &String) -> Option<Bytes> {
-        match self.map.get(key) {
-            Some(node) if self.now_seconds() > node.borrow().expires_at => {
+        let node = self.map.get(key)?;
+        // Extract node props in a scope of an immutable borrow
+        let (value, expires_at) = {
+            let node_borrow = node.borrow();
+            (node_borrow.value.clone(), node_borrow.expires_at)
+        }; 
+        match expires_at {
+            CacheItemTTL::Persist => {
+                self.move_to_head(Rc::clone(node));
+                Some(value)
+            }
+            CacheItemTTL::ExpiresAt(expires_at) if self.now_seconds() > expires_at => {
                 self.remove_node(Rc::clone(node));
                 self.map.remove(key);
                 None
             }
-            Some(node) => {
-                let value = node.borrow().value.clone();
+            CacheItemTTL::ExpiresAt(_) => {
                 self.move_to_head(Rc::clone(node));
                 Some(value)
             }
-            None => None,
         }
     }
 
@@ -128,10 +142,15 @@ impl LRUCache {
             .as_secs()
     }
     fn create_node(&self, key: String, value: Bytes) -> Rc<RefCell<CacheItem>> {
+        let expires_at = if self.ttl < 1 {
+            CacheItemTTL::Persist
+        } else {
+            CacheItemTTL::ExpiresAt(self.now_seconds() + self.ttl)
+        };
         Rc::new(RefCell::new(CacheItem {
             key: key.clone(),
             value: value.clone(),
-            expires_at: self.now_seconds() + self.ttl_seconds,
+            expires_at,
             prev: None,
             next: None,
         }))
