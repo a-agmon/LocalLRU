@@ -1,6 +1,6 @@
 [package]
 name = "local_lru"
-version = "0.2.3"
+version = "0.2.4"
 license = "MIT"
 description = "A simple, thread-safe and lock-free LRU cache based on thread local storage."
 repository = "https://github.com/a-agmon/LocalLRU"
