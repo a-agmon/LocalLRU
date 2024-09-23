@@ -63,13 +63,13 @@ impl LRUCache {
     }
 
     /// Retrieves an item from the cache by key. If the item exists, it moves it to the front.
-    pub(crate) fn get_item(&mut self, key: &String) -> Option<Bytes> {
+    pub(crate) fn get_item(&mut self, key: &str) -> Option<Bytes> {
         let node = self.map.get(key)?;
         // Extract node props in a scope of an immutable borrow
         let (value, expires_at) = {
             let node_borrow = node.borrow();
             (node_borrow.value.clone(), node_borrow.expires_at)
-        }; 
+        };
         match expires_at {
             CacheItemTTL::Persist => {
                 self.move_to_head(Rc::clone(node));

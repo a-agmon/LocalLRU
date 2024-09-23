@@ -1,6 +1,16 @@
 //! [`LocalCache`] is a thread safe and lock free implementation of LRU caching.
 //! Its speed and thread-safety is based on using thread-local storage rather than locking. This means that each thread has its own cache, and the cache is not shared between threads.
 //!
+//! # Example
+//!
+//! ```
+//! use local_lru::LocalCache;  
+//! use bytes::Bytes;
+//! // Create a new cache with a capacity of 2 items and a TTL of 60 seconds
+//! let cache = LocalCache::new(2, 60);
+//! cache.add_item("key1", Bytes::from("value1"));
+//! let item = cache.get_item("key1");
+//! ```
 //! One of the main challenges with LRU caching is that it invovles a lot of writings and updates of its internal data structures: each get and set operation in LRU cache requires updating of at least one pointer.
 //! This fact diminishes the famous O(1) complexity of LRU cache operations in multithreaded applications, such as web services, which require synchronization and locking mechanisms to ensure thread-safety.
 //!
@@ -29,7 +39,7 @@ impl LocalCache {
     /// # Arguments
     ///
     /// * `capacity` - The maximum number of items the cache can hold before evicting the least recently used item.
-    /// * `ttl` - The time-to-live for each item in seconds.
+    /// * `ttl` - The time-to-live for each item in seconds. anything less than 1 means no expiration.
     ///
     /// # Example
     ///
@@ -37,8 +47,8 @@ impl LocalCache {
     /// use local_lru::LocalCache;  
     /// use bytes::Bytes;
     /// let cache = LocalCache::new(2, 60);
-    /// cache.add_item("key1".to_string(), Bytes::from("value1"));
-    /// assert_eq!(cache.get_item(&"key1".to_string()), Some(Bytes::from("value1")));
+    /// cache.add_item("key1", Bytes::from("value1"));
+    /// assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
     /// ```
     pub fn new(capacity: usize, ttl: u64) -> Self {
         CACHE.with(|cache| {
@@ -51,7 +61,7 @@ impl LocalCache {
     /// # Returns
     ///
     /// An Option containing the item if it exists, or None if it does not.
-    pub fn get_item(&self, key: &String) -> Option<Bytes> {
+    pub fn get_item(&self, key: &str) -> Option<Bytes> {
         CACHE.with(|cache| cache.borrow_mut().get_item(key))
     }
 
@@ -63,8 +73,8 @@ impl LocalCache {
     ///
     /// # Returns
     ///
-    pub fn add_item(&self, key: String, value: Bytes) {
-        CACHE.with(|cache| cache.borrow_mut().add_item(key, value))
+    pub fn add_item(&self, key: &str, value: Bytes) {
+        CACHE.with(|cache| cache.borrow_mut().add_item(key.to_string(), value))
     }
 }
 #[cfg(test)]
@@ -77,106 +87,70 @@ mod tests {
     fn test_capacity_based_eviction() {
         let cache = LocalCache::new(3, 60);
 
-        cache.add_item("key1".to_string(), Bytes::from("value1"));
-        cache.add_item("key2".to_string(), Bytes::from("value2"));
-        cache.add_item("key3".to_string(), Bytes::from("value3"));
+        cache.add_item("key1", Bytes::from("value1"));
+        cache.add_item("key2", Bytes::from("value2"));
+        cache.add_item("key3", Bytes::from("value3"));
 
-        assert_eq!(
-            cache.get_item(&"key1".to_string()),
-            Some(Bytes::from("value1"))
-        );
-        assert_eq!(
-            cache.get_item(&"key2".to_string()),
-            Some(Bytes::from("value2"))
-        );
-        assert_eq!(
-            cache.get_item(&"key3".to_string()),
-            Some(Bytes::from("value3"))
-        );
+        assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
+        assert_eq!(cache.get_item("key2"), Some(Bytes::from("value2")));
+        assert_eq!(cache.get_item("key3"), Some(Bytes::from("value3")));
 
         // Adding a fourth item should evict the least recently used item (key1)
-        cache.add_item("key4".to_string(), Bytes::from("value4"));
+        cache.add_item("key4", Bytes::from("value4"));
 
-        assert_eq!(cache.get_item(&"key1".to_string()), None);
-        assert_eq!(
-            cache.get_item(&"key2".to_string()),
-            Some(Bytes::from("value2"))
-        );
-        assert_eq!(
-            cache.get_item(&"key3".to_string()),
-            Some(Bytes::from("value3"))
-        );
-        assert_eq!(
-            cache.get_item(&"key4".to_string()),
-            Some(Bytes::from("value4"))
-        );
+        assert_eq!(cache.get_item("key1"), None);
+        assert_eq!(cache.get_item("key2"), Some(Bytes::from("value2")));
+        assert_eq!(cache.get_item("key3"), Some(Bytes::from("value3")));
+        assert_eq!(cache.get_item("key4"), Some(Bytes::from("value4")));
     }
 
     #[test]
     fn test_get_item_updates_order() {
         let cache = LocalCache::new(3, 60);
 
-        cache.add_item("key1".to_string(), Bytes::from("value1"));
-        cache.add_item("key2".to_string(), Bytes::from("value2"));
-        cache.add_item("key3".to_string(), Bytes::from("value3"));
+        cache.add_item("key1", Bytes::from("value1"));
+        cache.add_item("key2", Bytes::from("value2"));
+        cache.add_item("key3", Bytes::from("value3"));
 
         // Access key1, making it the most recently used
-        cache.get_item(&"key1".to_string());
+        cache.get_item("key1");
 
         // Add a new item, which should evict the least recently used (now key2)
-        cache.add_item("key4".to_string(), Bytes::from("value4"));
+        cache.add_item("key4", Bytes::from("value4"));
 
-        assert_eq!(
-            cache.get_item(&"key1".to_string()),
-            Some(Bytes::from("value1"))
-        );
-        assert_eq!(cache.get_item(&"key2".to_string()), None);
-        assert_eq!(
-            cache.get_item(&"key3".to_string()),
-            Some(Bytes::from("value3"))
-        );
-        assert_eq!(
-            cache.get_item(&"key4".to_string()),
-            Some(Bytes::from("value4"))
-        );
+        assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
+        assert_eq!(cache.get_item("key2"), None);
+        assert_eq!(cache.get_item("key3"), Some(Bytes::from("value3")));
+        assert_eq!(cache.get_item("key4"), Some(Bytes::from("value4")));
     }
 
     #[test]
     fn test_ttl_expiration() {
         let cache = LocalCache::new(3, 2); // TTL of 2 seconds
 
-        cache.add_item("key1".to_string(), Bytes::from("value1"));
+        cache.add_item("key1", Bytes::from("value1"));
 
-        assert_eq!(
-            cache.get_item(&"key1".to_string()),
-            Some(Bytes::from("value1"))
-        );
+        assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
 
         // Wait for 3 seconds (longer than TTL)
         sleep(Duration::from_secs(3));
 
         // The item should now be expired
-        assert_eq!(cache.get_item(&"key1".to_string()), None);
+        assert_eq!(cache.get_item("key1"), None);
     }
 
     #[test]
     fn test_no_ttl_expiration() {
         let cache = LocalCache::new(3, 0); // TTL of 0 seconds means no expiration
 
-        cache.add_item("key1".to_string(), Bytes::from("value1"));
+        cache.add_item("key1", Bytes::from("value1"));
 
-        assert_eq!(
-            cache.get_item(&"key1".to_string()),
-            Some(Bytes::from("value1"))
-        );
+        assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
 
         // Wait for 3 seconds
         sleep(Duration::from_secs(3));
 
         // The item should still be present as there's no TTL
-        assert_eq!(
-            cache.get_item(&"key1".to_string()),
-            Some(Bytes::from("value1"))
-        );
+        assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
     }
 }
