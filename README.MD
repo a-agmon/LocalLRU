@@ -21,9 +21,9 @@ let cache = LocalCache::new(2, 60);
 // Create a new cache with a capacity of 2 items and no TTL
 let cache = LocalCache::new(2, 0);
 // Add an item to the cache
-cache.add_item("key1".to_string(), Bytes::from("value1"));
+cache.add_item("key1", Bytes::from("value1"));
 // Get the item from the cache
-assert_eq!(cache.get_item(&"key1".to_string()), Some(Bytes::from("value1")));
+assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
 ```
 
 ## Motivation
