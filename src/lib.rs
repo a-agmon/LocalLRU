@@ -22,6 +22,7 @@
 //
 //
 use bytes::Bytes;
+use serde::{de::DeserializeOwned, Serialize};
 use std::cell::RefCell;
 
 mod cache;
@@ -71,15 +72,41 @@ impl LocalCache {
     /// * `key` - The key to add the item for.
     /// * `value` - The value to add to the cache represented as `Bytes`.
     ///
-    /// # Returns
-    ///
     pub fn add_item(&self, key: &str, value: Bytes) {
         CACHE.with(|cache| cache.borrow_mut().add_item(key.to_string(), value))
+    }
+
+    /// Wrapper function to add a struct to the cache.
+    /// It simple uses bincode to serialize the struct and add it to the cache as a Bytes object.
+    /// # Arguments
+    ///
+    /// * `key` - The key to add the item for.
+    /// * `value` - Any struct that implements Serialize.
+    ///
+    pub fn add_struct<T: Serialize>(&self, key: &str, value: T) {
+        let bytes = bincode::serialize(&value).unwrap(); // TODO: handle error
+        self.add_item(key, Bytes::from(bytes));
+    }
+
+    /// Wrapper function to get a struct from the cache.
+    /// It uses bincode to deserialize the Bytes object back into a struct.
+    /// # Arguments
+    ///
+    /// * `key` - The key to get the item for.
+    ///
+    /// # Returns
+    ///
+    /// An Option containing the item if it exists, or None if it does not.
+    pub fn get_struct<T: DeserializeOwned>(&self, key: &str) -> Option<T> {
+        let bytes = self.get_item(key)?;
+        bincode::deserialize(&bytes).ok()
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Deserialize;
+    use serde::Serialize;
     use std::thread::sleep;
     use std::time::Duration;
 
@@ -152,5 +179,34 @@ mod tests {
 
         // The item should still be present as there's no TTL
         assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
+    }
+
+    #[test]
+    fn test_add_and_get_struct() {
+        #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+        struct TestStruct {
+            field1: String,
+            field2: i32,
+        }
+
+        let cache = LocalCache::new(3, 60);
+
+        let test_struct = TestStruct {
+            field1: "Hello".to_string(),
+            field2: 42,
+        };
+
+        // Add the struct to the cache
+        cache.add_struct("test_key", test_struct.clone());
+
+        // Retrieve the struct from the cache
+        let retrieved_struct: Option<TestStruct> = cache.get_struct("test_key");
+
+        // Assert that the retrieved struct matches the original
+        assert_eq!(retrieved_struct, Some(test_struct.clone()));
+
+        // Test with a non-existent key
+        let non_existent: Option<TestStruct> = cache.get_struct("non_existent_key");
+        assert_eq!(non_existent, None);
     }
 }
