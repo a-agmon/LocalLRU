@@ -19,7 +19,7 @@ checksum = "428d9aa8fbc0670b7b8d6030a7fadd0f86151cae55e4dbbece15f3780a3dfaf3"
 
 [[package]]
 name = "local_lru"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "bincode",
  "bytes",

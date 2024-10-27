@@ -4,9 +4,9 @@ local_lru is a simple, fast, thread-safe and lock-free implementation of LRU (Le
 Its speed and thread-safety is based on using thread-local storage rather than locking. 
 
 [![Crates.io](https://img.shields.io/crates/v/local_lru)](https://crates.io/crates/local_lru)
-[![Documentation](https://docs.rs/local_lru/badge.svg)][docs]
+[![Documentation](https://docs.rs/local_lru/badge.svg)](https://docs.rs/local_lru)
 
-More information about this crate can be found in the [crate documentation][docs].
+Using cache based on thread-local storage is different from other caching strategies. Please read the [Quick Introduction](#quick-introduction) section to understand the differences and decide if this cache is suitable for your use case.
 
 ## Features
 
@@ -19,6 +19,7 @@ More information about this crate can be found in the [crate documentation][docs
 ## Example Usage
 
 Here's a basic example of how to use `LocalCache`:
+
 ```rust
 use local_lru::LocalCache;  
 use bytes::Bytes;
@@ -50,7 +51,7 @@ let retrieved_struct: Option<TestStruct> = cache.get_struct("test_key");
 assert_eq!(retrieved_struct, Some(test_struct.clone()));
 ```
 
-## Motivation
+## Quick Introduction
 
  One of the main challenges with LRU caching is that it invovles a lot of writes and updates of its internal data structures: each get and set operation in LRU cache requires updating of at least one pointer.
  This fact diminishes the famous O(1) complexity of LRU cache operations in multithreaded applications, such as web services, which require synchronization and locking mechanisms to ensure thread-safety and thus significantly harm performance.
