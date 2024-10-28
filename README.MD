@@ -8,6 +8,8 @@ Its speed and thread-safety is based on using thread-local storage rather than l
 
 Using cache based on thread-local storage is different from other caching strategies. Please read the [Quick Introduction](#quick-introduction) section to understand the differences and decide if this cache is suitable for your use case.
 
+** Please regularly check for updates, as the API is constantly improving and fixes are being added regularly until a version will be released.**
+
 ## Features
 
 - Thread-safe and lock-free
