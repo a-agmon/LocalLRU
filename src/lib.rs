@@ -38,8 +38,8 @@ pub struct LocalCache {
 }
 
 impl LocalCache {
-    /// Creates a new LocalCache with the given capacity and ttl.
-    ///
+    /// Initilizalizes a new LocalCache with the given capacity and ttl.
+    /// Note that [`LocalCache`] can only be initialized once. Subsequent calls to initialize() will be ignored but not fail.
     /// # Arguments
     ///
     /// * `capacity` - The maximum number of items the cache can hold before evicting the least recently used item.
@@ -50,10 +50,15 @@ impl LocalCache {
     /// ```
     /// use local_lru::LocalCache;  
     /// use bytes::Bytes;
-    /// let cache = LocalCache::new(2, 60);
+    /// let cache = LocalCache::initialize(2, 60);
     /// cache.add_item("key1", Bytes::from("value1"));
     /// assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
     /// ```
+    pub fn initialize(capacity: usize, ttl: u64) -> Self {
+        LocalCache { capacity, ttl }
+    }
+
+    #[deprecated(since = "0.4.0", note = "Use initialize() instead")]
     pub fn new(capacity: usize, ttl: u64) -> Self {
         LocalCache { capacity, ttl }
     }
