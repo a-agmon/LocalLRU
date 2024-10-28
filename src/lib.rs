@@ -29,10 +29,13 @@ mod cache;
 use cache::LRUCache;
 
 thread_local! {
-    static CACHE: RefCell<LRUCache> = RefCell::new(LRUCache::new(1, 0));
+    static CACHE: RefCell<Option<LRUCache>> = RefCell::new(None);
 }
 
-pub struct LocalCache;
+pub struct LocalCache {
+    capacity: usize,
+    ttl: u64,
+}
 
 impl LocalCache {
     /// Creates a new LocalCache with the given capacity and ttl.
@@ -52,18 +55,24 @@ impl LocalCache {
     /// assert_eq!(cache.get_item("key1"), Some(Bytes::from("value1")));
     /// ```
     pub fn new(capacity: usize, ttl: u64) -> Self {
+        LocalCache { capacity, ttl }
+    }
+
+    fn initialize_cache_if_none(&self) {
         CACHE.with(|cache| {
             let mut cache = cache.borrow_mut();
-            *cache = LRUCache::new(capacity, ttl);
+            if cache.is_none() {
+                *cache = Some(LRUCache::new(self.capacity, self.ttl));
+            }
         });
-        LocalCache
     }
     /// Gets an item from the cache. In LRU cache fetching, the item is moved to the front of the list.
     /// # Returns
     ///
     /// An Option containing the item if it exists, or None if it does not.
     pub fn get_item(&self, key: &str) -> Option<Bytes> {
-        CACHE.with(|cache| cache.borrow_mut().get_item(key))
+        self.initialize_cache_if_none();
+        CACHE.with(|cache| cache.borrow_mut().as_mut().unwrap().get_item(key))
     }
 
     /// Adds an item to the cache.
@@ -73,7 +82,14 @@ impl LocalCache {
     /// * `value` - The value to add to the cache represented as `Bytes`.
     ///
     pub fn add_item(&self, key: &str, value: Bytes) {
-        CACHE.with(|cache| cache.borrow_mut().add_item(key.to_string(), value))
+        self.initialize_cache_if_none();
+        CACHE.with(|cache| {
+            cache
+                .borrow_mut()
+                .as_mut()
+                .unwrap()
+                .add_item(key.to_string(), value)
+        })
     }
 
     /// Wrapper function to add a struct to the cache.
