@@ -60,7 +60,7 @@ assert_eq!(retrieved_struct, Some(test_struct.clone()));
 
  The thread-local strategy allows us to create a fast, thread-safe, and lock-free O(1) cache for the price of using more memory. As such, the cache is suitable for applications that require a high-performance and thread-safe cache, but do not require a large memory footprint.
 
-Using thread-local storage means that each thread has its own cache, and the cache is not shared between threads. This means that a cache item that is added to the cache using one thread will not be accessible to other threads. Users need to be aware of this behavior and design their usage of the cache accordingly. This can be very useful to applications that cache results of database queries, for example. If your app has 4 cores, then it will have 4 caches, one per core, and for each row you will have to access the database at most 4 times, once per core. But you will gain in performance and scalability, avoiding locks and mutexes.
+Using thread-local storage means that each thread has its own cache, and the cache is not shared between threads. This means that a cache item that is added to the cache using one thread will not be accessible to other threads. Users need to be aware of this behavior and design their usage of the cache accordingly. This can be very useful to applications that cache results of database queries, for example. If your app uses 4 threads, then it will have 4 caches, one per thread, and for each row you will have to access the database at most 4 times, once per thread. But you will gain in performance and scalability, avoiding locks and mutexes.
 
 ## Example using local_lru in an Axum service for caching
 

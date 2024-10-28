@@ -72,7 +72,13 @@ impl LocalCache {
     /// An Option containing the item if it exists, or None if it does not.
     pub fn get_item(&self, key: &str) -> Option<Bytes> {
         self.initialize_cache_if_none();
-        CACHE.with(|cache| cache.borrow_mut().as_mut().unwrap().get_item(key))
+        CACHE.with(|cache| {
+            if let Some(cache) = cache.borrow_mut().as_mut() {
+                cache.get_item(key)
+            } else {
+                None
+            }
+        })
     }
 
     /// Adds an item to the cache.
@@ -84,11 +90,9 @@ impl LocalCache {
     pub fn add_item(&self, key: &str, value: Bytes) {
         self.initialize_cache_if_none();
         CACHE.with(|cache| {
-            cache
-                .borrow_mut()
-                .as_mut()
-                .unwrap()
-                .add_item(key.to_string(), value)
+            if let Some(cache) = cache.borrow_mut().as_mut() {
+                cache.add_item(key.to_string(), value)
+            }
         })
     }
 
