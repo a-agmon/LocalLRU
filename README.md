@@ -20,7 +20,6 @@ __** Please regularly check for updates, as the API is constantly improving and 
 
 ## Example Usage
 
-Here's a basic example of how to use `LocalCache`:  
 Note that `LocalCache::initialize` only initializes the _parameters_ that set the cache's capacity and ttl. It does _not_ create the cache itself.
 The cache will only be lazily created with the initalized params when a thread first accesses the cache with a call to `get_item` or `add_item`. Subsequent calls to `initialize` simply modify the cache parameters, which will only effect threads that did not previously access the cache.
 
