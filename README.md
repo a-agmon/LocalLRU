@@ -21,13 +21,15 @@ __** Please regularly check for updates, as the API is constantly improving and 
 ## Example Usage
 
 Here's a basic example of how to use `LocalCache`:
+Note that `LocalCache::initialize` only initializes the _parameters_ that set the cache's capacity and ttl it does not create the cache itself.
+The cache will be created with the initalized params for a given thread only when that thread first accesses the cache with a call to `get_item` or `add_item`. Subsequent calls to `initialize` simply modify the cache parameters, which will only effect threads that did not previously access the cache.
 
 ```rust
 use local_lru::LocalCache;  
 use bytes::Bytes;
 // Create a new cache with a capacity of 2 items and a TTL of 60 seconds 
 let cache = LocalCache::initialize(2, 60);
-// Create a new cache with a capacity of 2 items and no TTL
+// Modify the cache parameters for the current thread
 let cache = LocalCache::initialize(2, 0);
 // Add an item to the cache
 cache.add_item("key1", Bytes::from("value1"));
@@ -40,7 +42,6 @@ struct TestStruct {
     field1: String,
     field2: i32,
 }
-let cache = LocalCache::initialize(3, 60);
 let test_struct = TestStruct {
     field1: "Hello".to_string(),
     field2: 42,
@@ -48,13 +49,11 @@ let test_struct = TestStruct {
 // Add the struct to the cache
 cache.add_struct("test_key", test_struct.clone());
 // Retrieve the struct from the cache
-let retrieved_struct: Option<TestStruct> = cache.get_struct("test_key");
+let ret_struct: Option<TestStruct> = cache.get_struct("test_key");
 // Assert that the retrieved struct matches the original
-assert_eq!(retrieved_struct, Some(test_struct.clone()));
+assert_eq!(ret_struct, Some(test_struct.clone()));
 ```
-Note that `initialize` only initializes the _parameters_ that set the cache capacity and ttl.
-The cache will be actually created with the initalized params only when a thread first accesses the cache with call to `get_item` or `add_item`.
-In other words, there can only be one cache per thread, which is created on the first access. Subsequent calls to `initialize` simply modify the cache parameters, which will only effect threads that did not previously access the cache.
+
 
 ## Quick Introduction
 
@@ -63,7 +62,7 @@ In other words, there can only be one cache per thread, which is created on the 
 
  The thread-local strategy allows us to create a fast, thread-safe, and lock-free O(1) cache for the price of using more memory. As such, the cache is suitable for applications that require a high-performance and thread-safe cache, but do not require a large memory footprint.
 
-Using thread-local storage means that each thread has its own cache, and the cache is not shared between threads. This means that a cache item that is added to the cache using one thread will not be accessible to other threads. Users need to be aware of this behavior and design their usage of the cache accordingly. This can be very useful to applications that cache results of database queries, for example. If your app uses 4 threads, then it will have 4 caches, one per thread, and for each row you will have to access the database at most 4 times, once per thread. But you will gain in performance and scalability, avoiding locks and mutexes.
+Using thread-local storage means that each thread has its own cache, and the cache is not shared between threads. This means that a cache item that is added to the cache using one thread will not be accessible to other threads. Users need to be aware of this behavior and design their usage of the cache accordingly. This can be very useful for applications that cache results of database queries, for example. If your app uses 4 threads, then it will have 4 caches stores, one per thread, and for each row you will have to access the database _at most_ 4 times, once per thread. But you will gain in performance and scalability, avoiding locks and mutexes.
 
 ## Example using local_lru in an Axum service for caching
 
