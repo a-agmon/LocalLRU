@@ -111,6 +111,6 @@ I did run some benchmarks using the [moka crate](https://crates.io/crates/moka) 
 I created 10,000 key-value pairs, and then I measured the time it took for 10 threads to run N iterations, where each iteration consists of randomly picking a key-value pair and then either getting the value from the cache or adding the value to the cache if it doesn't exist.
 I measured 1K to 1M iterations X 10 threads and plotted the results.
 
-![benchmarks](./bench.png)
+![benchmarks](.assets/bench.png)
 
 As shown in the results, Moka initially outperforms local_lru until around 250,000 iterations per thread. Beyond that point, local_lru becomes faster, and by the time iterations reach 1 million per thread (totaling 10 million), local_lru is nearly twice as fast as Moka. This suggests that avoiding locking mechanisms can significantly boost throughput in high-throughput, multi-threaded scenarios despit the use of thread-local storage which causes many cache misses. 
