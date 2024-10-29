@@ -26,9 +26,9 @@ Here's a basic example of how to use `LocalCache`:
 use local_lru::LocalCache;  
 use bytes::Bytes;
 // Create a new cache with a capacity of 2 items and a TTL of 60 seconds 
-let cache = LocalCache::new(2, 60);
+let cache = LocalCache::initialize(2, 60);
 // Create a new cache with a capacity of 2 items and no TTL
-let cache = LocalCache::new(2, 0);
+let cache = LocalCache::initialize(2, 0);
 // Add an item to the cache
 cache.add_item("key1", Bytes::from("value1"));
 // Get the item from the cache
@@ -40,7 +40,7 @@ struct TestStruct {
     field1: String,
     field2: i32,
 }
-let cache = LocalCache::new(3, 60);
+let cache = LocalCache::initialize(3, 60);
 let test_struct = TestStruct {
     field1: "Hello".to_string(),
     field2: 42,
@@ -52,6 +52,9 @@ let retrieved_struct: Option<TestStruct> = cache.get_struct("test_key");
 // Assert that the retrieved struct matches the original
 assert_eq!(retrieved_struct, Some(test_struct.clone()));
 ```
+Note that `initialize` only initializes the _parameters_ that set the cache capacity and ttl.
+The cache will be actually created with the initalized params only when a thread first accesses the cache with call to `get_item` or `add_item`.
+In other words, there can only be one cache per thread, which is created on the first access. Subsequent calls to `initialize` simply modify the cache parameters, which will only effect threads that did not previously access the cache.
 
 ## Quick Introduction
 
@@ -71,7 +74,7 @@ Using thread-local storage means that each thread has its own cache, and the cac
 }
 #[tokio::main]
 async fn main() {
-    let cache = Arc::new(LocalCache::new(100, 120));
+    let cache = Arc::new(LocalCache::initialize(100, 120));
     let app = axum::Router::new()
         .route("/get/:key", axum::routing::get(get_key))
         .route("/post", axum::routing::post(post_key))
