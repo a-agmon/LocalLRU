@@ -39,7 +39,10 @@ pub struct LocalCache {
 
 impl LocalCache {
     /// Initilizalizes a new LocalCache with the given capacity and ttl.
-    /// Note that [`LocalCache`] can only be initialized once. Subsequent calls to initialize() will be ignored but not fail.
+    /// Note that this only initializes the parameters that set the cache capacity and ttl.
+    /// Whenever a thread first accesses the cache with call to `get_item` or `add_item`, the cache will be actually created with the given parameters for that thread.
+    /// Simply put, there can only be one cache per thread, which is created on the first access.
+    /// Subsequent calls to `initialize` simply modify the cache parameters, which will effect threads that did not previously access the cache.
     /// # Arguments
     ///
     /// * `capacity` - The maximum number of items the cache can hold before evicting the least recently used item.
@@ -137,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_capacity_based_eviction() {
-        let cache = LocalCache::new(3, 60);
+        let cache = LocalCache::initialize(3, 60);
 
         cache.add_item("key1", Bytes::from("value1"));
         cache.add_item("key2", Bytes::from("value2"));
@@ -158,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_get_item_updates_order() {
-        let cache = LocalCache::new(3, 60);
+        let cache = LocalCache::initialize(3, 60);
 
         cache.add_item("key1", Bytes::from("value1"));
         cache.add_item("key2", Bytes::from("value2"));
@@ -178,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_ttl_expiration() {
-        let cache = LocalCache::new(3, 2); // TTL of 2 seconds
+        let cache = LocalCache::initialize(3, 2); // TTL of 2 seconds
 
         cache.add_item("key1", Bytes::from("value1"));
 
@@ -193,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_no_ttl_expiration() {
-        let cache = LocalCache::new(3, 0); // TTL of 0 seconds means no expiration
+        let cache = LocalCache::initialize(3, 0); // TTL of 0 seconds means no expiration
 
         cache.add_item("key1", Bytes::from("value1"));
 
@@ -214,7 +217,7 @@ mod tests {
             field2: i32,
         }
 
-        let cache = LocalCache::new(3, 60);
+        let cache = LocalCache::initialize(3, 60);
 
         let test_struct = TestStruct {
             field1: "Hello".to_string(),
