@@ -6,8 +6,8 @@
 //! ```
 //! use local_lru::LocalCache;  
 //! use bytes::Bytes;
-//! // Create a new cache with a capacity of 2 items and a TTL of 60 seconds
-//! let cache = LocalCache::new(2, 60);
+//! // Initialize the cache with a capacity of 2 items and a TTL of 60 seconds
+//! let cache = LocalCache::initialize(2, 60);
 //! cache.add_item("key1", Bytes::from("value1"));
 //! let item = cache.get_item("key1");
 //! ```
@@ -40,9 +40,9 @@ pub struct LocalCache {
 impl LocalCache {
     /// Initilizalizes a new LocalCache with the given capacity and ttl.
     /// Note that this only initializes the parameters that set the cache capacity and ttl.
-    /// Whenever a thread first accesses the cache with call to `get_item` or `add_item`, the cache will be actually created with the given parameters for that thread.
-    /// Simply put, there can only be one cache per thread, which is created on the first access.
-    /// Subsequent calls to `initialize` simply modify the cache parameters, which will effect threads that did not previously access the cache.
+    /// The cache will be created with the given parameter only when a thread first accesses the cache with call to `get_item` or `add_item`.
+    /// Subsequent calls to `initialize` simply modify the cache parameters, which will only effect threads that did not previously access the cache.
+    ///
     /// # Arguments
     ///
     /// * `capacity` - The maximum number of items the cache can hold before evicting the least recently used item.
