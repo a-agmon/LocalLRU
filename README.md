@@ -1,6 +1,6 @@
 # Local LRU
 
-local_lru is a simple, fast, thread-safe and lock-free implementation of LRU (Least Recently Used) caching in Rust. 
+local_lru is a simple, lean, fast, thread-safe and lock-free implementation of LRU (Least Recently Used) caching in Rust. 
 Its speed and thread-safety is based on using thread-local storage rather than locking. 
 
 [![Crates.io](https://img.shields.io/crates/v/local_lru)](https://crates.io/crates/local_lru)

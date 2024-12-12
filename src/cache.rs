@@ -2,15 +2,16 @@ use bytes::Bytes;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
-use std::time::SystemTime;
+use std::time::Instant;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum CacheItemTTL {
-    ExpiresAt(u64),
+    ExpiresAfterSeconds(u64),
     Persist,
 }
 
 pub(crate) struct CacheItem {
+    last_access: Instant,
     key: String,
     value: Bytes,
     expires_at: CacheItemTTL,
@@ -43,7 +44,7 @@ impl LRUCache {
         if let Some(node) = self.map.get(&key) {
             // Update the value and move the node to the head.
             node.borrow_mut().value = value.clone();
-            self.move_to_head(Rc::clone(node));
+            self.move_to_head(&Rc::clone(node));
         } else {
             // Create a new node.
             let new_node = self.create_node(key.clone(), value);
@@ -72,25 +73,28 @@ impl LRUCache {
         };
         match expires_at {
             CacheItemTTL::Persist => {
-                self.move_to_head(Rc::clone(node));
+                self.move_to_head(&Rc::clone(node));
                 Some(value)
             }
-            CacheItemTTL::ExpiresAt(expires_at) if self.now_seconds() > expires_at => {
+            CacheItemTTL::ExpiresAfterSeconds(seconds_to_expire)
+                if node.borrow().last_access.elapsed().as_secs() > seconds_to_expire =>
+            {
                 self.remove_node(Rc::clone(node));
                 self.map.remove(key);
                 None
             }
-            CacheItemTTL::ExpiresAt(_) => {
-                self.move_to_head(Rc::clone(node));
+            CacheItemTTL::ExpiresAfterSeconds(_) => {
+                self.move_to_head(&Rc::clone(node));
                 Some(value)
             }
         }
     }
 
-    /// Moves the given node to the front of the list.
-    fn move_to_head(&mut self, node: Rc<RefCell<CacheItem>>) {
-        self.remove_node(Rc::clone(&node));
-        self.add_to_head(node);
+    /// Moves the given node to the front of the list. This function is called when the item is accessed.
+    fn move_to_head(&mut self, node: &Rc<RefCell<CacheItem>>) {
+        self.remove_node(Rc::clone(node));
+        self.add_to_head(Rc::clone(node));
+        node.borrow_mut().last_access = Instant::now();
     }
 
     /// Removes the given node from the list.
@@ -135,19 +139,14 @@ impl LRUCache {
         self.head = Some(node);
     }
 
-    fn now_seconds(&self) -> u64 {
-        SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-    }
     fn create_node(&self, key: String, value: Bytes) -> Rc<RefCell<CacheItem>> {
         let expires_at = if self.ttl < 1 {
             CacheItemTTL::Persist
         } else {
-            CacheItemTTL::ExpiresAt(self.now_seconds() + self.ttl)
+            CacheItemTTL::ExpiresAfterSeconds(self.ttl)
         };
         Rc::new(RefCell::new(CacheItem {
+            last_access: Instant::now(),
             key: key.clone(),
             value: value.clone(),
             expires_at,
