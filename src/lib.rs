@@ -29,9 +29,10 @@ mod cache;
 use cache::LRUCache;
 
 thread_local! {
-    static CACHE: RefCell<Option<LRUCache>> = RefCell::new(None);
+    static CACHE: RefCell<Option<LRUCache>> = const { RefCell::new(None) };
 }
 
+#[derive(Clone)]
 pub struct LocalCache {
     capacity: usize,
     ttl: u64,
@@ -135,6 +136,7 @@ mod tests {
     use super::*;
     use serde::Deserialize;
     use serde::Serialize;
+    use std::thread;
     use std::thread::sleep;
     use std::time::Duration;
 
@@ -236,5 +238,24 @@ mod tests {
         // Test with a non-existent key
         let non_existent: Option<TestStruct> = cache.get_struct("non_existent_key");
         assert_eq!(non_existent, None);
+    }
+
+    #[test]
+    fn test_thread_local_isolation() {
+        let cache = LocalCache::initialize(3, 60);
+        let cache_clone = cache.clone(); // Clone for the thread
+
+        // Add item in main thread
+        cache.add_item("main_key", Bytes::from("main_value"));
+
+        let thread_handle = thread::spawn(move || {
+            cache_clone.get_item("main_key"); // Use clone in thread
+            cache_clone.add_item("thread_key", Bytes::from("thread_value"));
+        });
+
+        thread_handle.join().unwrap();
+
+        assert_eq!(cache.get_item("main_key"), Some(Bytes::from("main_value")));
+        assert_eq!(cache.get_item("thread_key"), None);
     }
 }

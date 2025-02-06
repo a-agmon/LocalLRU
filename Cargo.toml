@@ -1,18 +1,18 @@
 [package]
 name = "local_lru"
-version = "0.4.5"
+version = "0.4.6"
 license = "MIT"
 description = "A simple, thread-safe and lock-free LRU cache based on thread local storage."
 repository = "https://github.com/a-agmon/LocalLRU"
-documentation = "https://docs.rs/local_lru/0.4.5"
+documentation = "https://docs.rs/local_lru/0.4.6"
 readme = "README.md"
 edition = "2021"
 
 [dependencies]
 bincode = "1.3.3"
-bytes = { version = "1.9.0", features = [
+bytes = { version = "1.10.0", features = [
     "std",
 ] }
-serde = { version = "1.0.216", features = [
+serde = { version = "1.0.217", features = [
     "derive",
 ] }
